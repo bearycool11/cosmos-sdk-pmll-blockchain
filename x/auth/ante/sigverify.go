@@ -10,6 +10,7 @@ import (
 	secp256k1dcrd "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"google.golang.org/protobuf/types/known/anypb"
 
+	apisigning "cosmossdk.io/api/cosmos/tx/signing/v1beta1"
 	"cosmossdk.io/core/event"
 	"cosmossdk.io/core/gas"
 	"cosmossdk.io/core/transaction"
@@ -98,7 +99,7 @@ func NewSigVerificationDecoratorWithVerifyOnCurve(ak AccountKeeper, signModeHand
 func OnlyLegacyAminoSigners(sigData signing.SignatureData) bool {
 	switch v := sigData.(type) {
 	case *signing.SingleSignatureData:
-		return v.SignMode == signing.SignMode_SIGN_MODE_LEGACY_AMINO_JSON
+		return v.SignMode == apisigning.SignMode_SIGN_MODE_LEGACY_AMINO_JSON
 	case *signing.MultiSignatureData:
 		for _, s := range v.Signatures {
 			if !OnlyLegacyAminoSigners(s) {
@@ -319,18 +320,24 @@ func (svd SigVerificationDecorator) consumeSignatureGas(
 // verifySig will verify the signature of the provided signer account.
 func (svd SigVerificationDecorator) verifySig(ctx context.Context, tx sdk.Tx, acc sdk.AccountI, sig signing.SignatureV2, newlyCreated bool) error {
 	execMode := svd.ak.GetEnvironment().TransactionService.ExecMode(ctx)
-	if execMode == transaction.ExecModeCheck {
-		if sig.Sequence < acc.GetSequence() {
+	unorderedTx, ok := tx.(sdk.TxWithUnordered)
+	isUnordered := ok && unorderedTx.GetUnordered()
+
+	// only check sequence if the tx is not unordered
+	if !isUnordered {
+		if execMode == transaction.ExecModeCheck {
+			if sig.Sequence < acc.GetSequence() {
+				return errorsmod.Wrapf(
+					sdkerrors.ErrWrongSequence,
+					"account sequence mismatch: expected higher than or equal to %d, got %d", acc.GetSequence(), sig.Sequence,
+				)
+			}
+		} else if sig.Sequence != acc.GetSequence() {
 			return errorsmod.Wrapf(
 				sdkerrors.ErrWrongSequence,
-				"account sequence mismatch, expected higher than or equal to %d, got %d", acc.GetSequence(), sig.Sequence,
+				"account sequence mismatch: expected %d, got %d", acc.GetSequence(), sig.Sequence,
 			)
 		}
-	} else if sig.Sequence != acc.GetSequence() {
-		return errorsmod.Wrapf(
-			sdkerrors.ErrWrongSequence,
-			"account sequence mismatch: expected %d, got %d", acc.GetSequence(), sig.Sequence,
-		)
 	}
 
 	// we're in simulation mode, or in ReCheckTx, or context is not

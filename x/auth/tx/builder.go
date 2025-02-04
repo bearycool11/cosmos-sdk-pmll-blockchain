@@ -63,6 +63,7 @@ func newBuilderFromDecodedTx(
 		codec:                       codec,
 		msgs:                        decoded.Messages,
 		timeoutHeight:               decoded.GetTimeoutHeight(),
+		timeoutTimestamp:            decoded.GetTimeoutTimeStamp(),
 		granter:                     decoded.FeeGranter(),
 		payer:                       payer,
 		unordered:                   decoded.GetUnordered(),
@@ -114,14 +115,26 @@ func (w *builder) getTx() (*gogoTxWrapper, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert messages: %w", err)
 	}
-	body := &txv1beta1.TxBody{
-		Messages:                    anyMsgs,
-		Memo:                        w.memo,
-		TimeoutHeight:               w.timeoutHeight,
-		TimeoutTimestamp:            timestamppb.New(w.timeoutTimestamp),
-		Unordered:                   w.unordered,
-		ExtensionOptions:            intoAnyV2(w.extensionOptions),
-		NonCriticalExtensionOptions: intoAnyV2(w.nonCriticalExtensionOptions),
+
+	var body proto.Message
+	if !w.unordered && (w.timeoutTimestamp.IsZero() || w.timeoutTimestamp.Unix() == 0) {
+		body = &txv1beta1.TxBodyCompat{
+			Messages:                    anyMsgs,
+			Memo:                        w.memo,
+			TimeoutHeight:               w.timeoutHeight,
+			ExtensionOptions:            intoAnyV2(w.extensionOptions),
+			NonCriticalExtensionOptions: intoAnyV2(w.nonCriticalExtensionOptions),
+		}
+	} else {
+		body = &txv1beta1.TxBody{
+			Messages:                    anyMsgs,
+			Memo:                        w.memo,
+			TimeoutHeight:               w.timeoutHeight,
+			TimeoutTimestamp:            timestamppb.New(w.timeoutTimestamp),
+			Unordered:                   w.unordered,
+			ExtensionOptions:            intoAnyV2(w.extensionOptions),
+			NonCriticalExtensionOptions: intoAnyV2(w.nonCriticalExtensionOptions),
+		}
 	}
 
 	fee, err := w.getFee()

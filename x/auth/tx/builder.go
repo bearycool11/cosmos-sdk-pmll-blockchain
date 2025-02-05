@@ -14,10 +14,10 @@ import (
 	signingv1beta1 "cosmossdk.io/api/cosmos/tx/signing/v1beta1"
 	txv1beta1 "cosmossdk.io/api/cosmos/tx/v1beta1"
 	"cosmossdk.io/core/address"
+	"cosmossdk.io/core/codec"
 	"cosmossdk.io/x/tx/decode"
 
 	"github.com/cosmos/cosmos-sdk/client"
-	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -46,7 +46,7 @@ func newBuilderFromDecodedTx(
 		modeInfoV1 := new(tx.ModeInfo)
 		fromV2ModeInfo(sigInfo.ModeInfo, modeInfoV1)
 		sigInfos[i] = &tx.SignerInfo{
-			PublicKey: intoAnyV1([]*anypb.Any{sigInfo.PublicKey})[0],
+			PublicKey: intoAnyV1(codec, []*anypb.Any{sigInfo.PublicKey})[0],
 			ModeInfo:  modeInfoV1,
 			Sequence:  sigInfo.Sequence,
 		}

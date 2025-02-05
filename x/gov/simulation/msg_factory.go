@@ -131,8 +131,7 @@ func submitProposalWithVotesScheduled(
 	proposalMsgs ...sdk.Msg,
 ) ([]simsx.SimAccount, *v1.MsgSubmitProposal) {
 	r := testData.Rand()
-	expedited := true
-	// expedited := r.Bool()
+	expedited := r.Bool()
 	params := must(k.Params.Get(ctx))
 	minDeposits := params.MinDeposit
 	if expedited {
@@ -228,7 +227,7 @@ func submitProposalWithVotesScheduled(
 					reporter.Skip("proposal not in voting period")
 					return nil, nil
 				}
-				voter := testData.AccountAt(reporter, whoVotes[i])
+				voter := testData.accountant(reporter, whoVotes[i])
 				msg := v1.NewMsgVote(voter.AddressBech32, proposalID, randomVotingOption(r.Rand), "")
 				return []simsx.SimAccount{voter}, msg
 			}

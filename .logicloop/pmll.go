@@ -22,6 +22,7 @@ type InterchainFiatBackedEngine struct {
     JKECounter            int
     suspiciousTransactions []string
     ATOMValue             float64
+    reserves              []string // Holds reserves of BTC and ETH addresses
 }
 
 func NewInterchainFiatBackedEngine() *InterchainFiatBackedEngine {
@@ -31,6 +32,7 @@ func NewInterchainFiatBackedEngine() *InterchainFiatBackedEngine {
         JKECounter:            0,
         suspiciousTransactions: make([]string, 0),
         ATOMValue:             5.89, // Starting from a hypothetical value
+        reserves:              []string{"btc_address_example", "eth_address_example"},
     }
 }
 
@@ -45,13 +47,12 @@ func (fde *InterchainFiatBackedEngine) checkLedgerIntegrity() {
 }
 
 func (fde *InterchainFiatBackedEngine) checkFiatBackingConsistency(cosmosLedger sdk.Ledger, bitcoinLedger bitcore.Ledger, ethereumLedger ethereum.Ledger) {
-    btcValue := bitcore.GetReserveValue("btc_address_example")
-    ethValue := ethereum.GetReserveValue("eth_address_example")
+    btcValue := bitcore.GetReserveValue(fde.reserves[0])
+    ethValue := ethereum.GetReserveValue(fde.reserves[1])
     fde.ATOMValue = (btcValue + ethValue) / 10000 // Example ratio for pegging ATOM value
 }
 
 func (fde *InterchainFiatBackedEngine) detectFraud(cosmosLedger sdk.Ledger, ibcLedger ibc.Ledger, bitcoinLedger bitcore.Ledger, ethereumLedger ethereum.Ledger) {
-    // Check transactions across all ledgers for suspicious activity
     ledgers := []interface{}{cosmosLedger, ibcLedger, bitcoinLedger, ethereumLedger}
     for _, ledger := range ledgers {
         switch l := ledger.(type) {
@@ -165,44 +166,4 @@ func (fde *InterchainFiatBackedEngine) checkLedgerIntegrityForTransaction(txid, 
     case bitcore.Transaction:
         if fde.isBitcoinSuspicious(t) {
             fde.suspiciousTransactions = append(fde.suspiciousTransactions, txid)
-            fde.logBitcoinSuspiciousTransaction(t)
-        }
-    case ethereum.Transaction:
-        if fde.isEthereumSuspicious(t) {
-            fde.suspiciousTransactions = append(fde.suspiciousTransactions, txid)
-            fde.logEthereumSuspiciousTransaction(t)
-        }
-    }
-}
-
-func (fde *InterchainFiatBackedEngine) processConversation(userInput string) string {
-    fde.novelinput(userInput)
-
-    for {
-        fde.updatePersistentState()
-        for _, item := range fde.shortTermMemory {
-            fde.analyzeContext(item)
-        }
-        fde.checkLedgerIntegrity()
-        time.Sleep(CHECK_INTERVAL_SECONDS * time.Second)
-    }
-
-    return "Processing..."
-}
-
-func (fde *InterchainFiatBackedEngine) updatePersistentState() {
-    // Update state for Cosmos, IBC, Bitcoin, and Ethereum networks
-}
-
-func (fde *InterchainFiatBackedEngine) analyzeContext(memoryItem string) {
-    // Analyze context across networks
-}
-
-func main() {
-    engine := NewInterchainFiatBackedEngine()
-    fmt.Println("Interchain Fiat Backed Engine running...")
-    fmt.Printf("Current ATOM Value: $%.2f\n", engine.ATOMValue)
-    engine.processConversation("") 
-    // Note: This function never returns because processConversation runs indefinitely
-}
-IBC.go
+            fde.logBitcoinSuspicious...
